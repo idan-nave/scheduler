@@ -1,0 +1,635 @@
+############################Scheduler Manager Sequence diagrams - Full workflow############################
+
+### **Complete Scheduler Cycle: Task Creation, Execution, Update, and Removal**
+
+```plaintext
+User          Scheduler         TaskManager        UIDManager         PQ  
+  |                |                  |                  |             |           
+  | Create Task    |                  |                  |             |              
+  |---------------->|                  |                  |             |              
+  |                | Create Task      |                  |             |              
+  |                |------------------>|                  |             |              
+  |                | Generate UID     |                  |             |           
+  |                |------------------>| Generate UID     |             |               
+  |                |                   |----------------->|             |
+  |                |                   |Get Counter,PID,TS|             |               
+  |                |                   | Return UID       |             |               
+  |                |  UID Generated    |<-----------------|             | 
+  |                |<------------------|                  |             |
+  |                | Set Task Params  |                  |             |
+  |                |----------------->|                  |             |
+  |                | Set Execution Time|                  |             |
+  |                |<------------------|                  |             |
+  |                | Add Task to PQ    |                  |             |       
+  |                |----------------->| Insert to PQ     |             |      
+  |                |                   |----------------->| Insert Task |
+  |                |  Task Inserted    |                  |             |
+  |                |<------------------|                  |             |
+  | Task Created   |                   |                  |             |
+  |<----------------|                  |                  |             |
+  | Execute Task   |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Get Next Task    |                  |             |
+  |                |----------------->|                  |             |
+  |                | Retrieve Task    |                  |             |
+  |                |----------------->| Retrieve Task    |             |
+  |                |                   |----------------->|             |
+  |                |                   | Task Retrieved   |             |
+  |                |<------------------|                  |             |
+  |                | Execute Task      |                  |             |
+  |                |----------------->| Execute OpFunc   |             |
+  |                | Run Task Operation|                  |             |
+  |                |----------------->| OpFunc()         |             |
+  |                | Operation Complete|                  |             |
+  |                |<-----------------|                  |             |
+  |                | Update Task Time  |                  |             |
+  |                |----------------->| Update Time      |             |
+  |                |                   | New Exec Time    |             |
+  |                |                   |----------------->|             |
+  |                | Reinsert Task     |                  |             |
+  |                |----------------->| Insert Task      |             |
+  |                |                   |----------------->| Insert Task |
+  |                |                   | Task Reinserted  |             |
+  |                |<------------------|                  |             |
+  | Task Executed  |                   |                  |             |
+  |<----------------|                  |                  |             |
+  | Erase Task     |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Find Task        |                  |             |
+  |                |----------------->|                  |              |
+  |                | Match Task       |                  |             |
+  |                |----------------->| Search Task      |             |
+  |                |                   |----------------->|             |
+  |                |                   | Match Found      |             |
+  |                |                   |<-----------------|             |
+  |                | Remove Task      |                  |             |
+  |                |----------------->| Remove Task      |             |
+  |                |                   |----------------->|             |
+  |                |                   | Task Removed     |             |
+  |                |<------------------|                  |             |
+  | Task Removed   |                   |                  |             |
+  |<----------------|                  |                  |             |
+  |                |                  |                  |             |
+  | Insert Task    |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Insert Task to PQ |                  |             |
+  |                |----------------->|                  |             |
+  |                | Task Inserted    |                  |             |
+  |                |<-----------------|                  |             |
+  | Get Task       |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Retrieve Task    |                  |             |
+  |                |----------------->|                  |             |
+  |                | Task Retrieved   |                  |             |
+  |                |<-----------------|                  |             |
+  | Task Executed  |                  |                  |             |
+  |<----------------|                 |                  |             |
+  | Check Size     |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Size of PQ       |                  |             |
+  |                |----------------->|                  |             |
+  |                | Return Size      |                  |             |
+  |                |<-----------------|                  |             |
+
+
+
+### Summary of All Key Operations:
+- **Task Creation** involves generating a UID and inserting it into the priority queue.
+- **Task Execution** involves retrieving the task, executing it, and reinserting it if it's recurring.
+- **Task Removal** involves finding the task in PQ and removing it.
+- **UID Generation** involves the use of static counters, `getpid()`, and timestamps.
+- **Priority Queue Operations** include insertion, retrieval, and size management.
+
+This is a detailed breakdown of the entire scheduler workflow, combining task creation, execution, priority queue management, and UID generation. Let me know if any further refinements are needed!
+
+
+############################Scheduler API############################
+
+### `SchedCreate`
+
+```plaintext
+User          Scheduler          Priority Queue
+  |                 |                    |
+  | Create Scheduler|                    |
+  |---------------->|                    |
+  |                 | Create Priority Queue|
+  |                 |------------------->|
+  |                 | Priority Queue Created|
+  |                 |<-------------------|
+  | Scheduler Created|                    |
+  |<----------------|                    |
+```
+
+---
+
+### `SchedDestroy`
+
+```plaintext
+User          Scheduler          Priority Queue
+  |                 |                    |
+  | Destroy Scheduler|                    |
+  |---------------->|                    |
+  |                 | Clear Priority Queue|
+  |                 |------------------->|
+  |                 | Priority Queue Cleared|
+  |                 |<-------------------|
+  |                 | Free Memory        |
+  |                 |------------------->|
+  | Scheduler Destroyed|                 |
+  |<----------------|                    |
+```
+
+---
+
+### `AddTask`
+
+```plaintext
+User          Scheduler          Priority Queue      Task
+  |                 |                    |              |
+  | Add Task        |                    |              |
+  |---------------->|                    |              |
+  |                 | Create Task Object|              |
+  |                 |------------------>|              |
+  |                 |                    | Create UID   |
+  |                 |                    |<-------------|
+  |                 | Enqueue Task       |              |
+  |                 |------------------->|              |
+  |                 |                    | Task Enqueued|
+  |                 |                    |<-------------|
+  | Task Added      |                    |              |
+  |<----------------|                    |              |
+```
+
+---
+
+### `RemoveTask`
+
+```plaintext
+User          Scheduler          Priority Queue      Task
+  |                 |                    |              |
+  | Remove Task      |                    |              |
+  |---------------->|                    |              |
+  |                 | Check Current Task |              |
+  |                 |------------------->|              |
+  |                 |                    | Match UID    |
+  |                 |                    |--------------|
+  |                 |                    | Match Found  |
+  |                 |                    |<-------------|
+  |                 |                    | Remove Task  |
+  |                 |                    |--------------|
+  | Task Removed     |                    |              |
+  |<----------------|                    |              |
+```
+
+---
+
+### `SchedRun`
+
+```plaintext
+User          Scheduler          Priority Queue      Task
+  |                 |                    |              |
+  | Run Scheduler    |                    |              |
+  |---------------->|                    |              |
+  |                 | Dequeue Task       |              |
+  |                 |------------------->|              |
+  |                 |                    | Task Dequeued|
+  |                 |                    |<-------------|
+  |                 | Execute Task       |              |
+  |                 |------------------->|              |
+  |                 | Reschedule or Destroy Task        |
+  |                 |<------------------|              |
+  | Task Executed    |                    |              |
+  |<----------------|                    |              |
+```
+
+---
+
+### `SchedStop`
+
+```plaintext
+User          Scheduler
+  |                 |
+  | Stop Scheduler   |
+  |---------------->|
+  |                 | Update State to STOPPED
+  |                 |-------------------------|
+  | Scheduler Stopped|
+  |<----------------|
+```
+
+---
+
+### `SchedClear`
+
+```plaintext
+User          Scheduler          Priority Queue      Task
+  |                 |                    |              |
+  | Clear Scheduler  |                    |              |
+  |---------------->|                    |              |
+  |                 | Dequeue All Tasks  |              |
+  |                 |------------------->|              |
+  |                 |                    | Task Dequeued|
+  |                 |                    |<-------------|
+  |                 | Destroy Task       |              |
+  |                 |------------------->|              |
+  | Scheduler Cleared|                    |              |
+  |<----------------|                    |              |
+```
+
+---
+
+### `SchedSize`
+
+```plaintext
+User          Scheduler          Priority Queue
+  |                 |                    |
+  | Get Size         |                    |
+  |---------------->|                    |
+  |                 | Check Queue Size   |
+  |                 |------------------->|
+  |                 | Queue Size Returned|
+  |                 |<-------------------|
+  | Size Retrieved   |                    |
+  |<----------------|                    |
+```
+
+---
+
+### `SchedIsEmpty`
+
+```plaintext
+User          Scheduler          Priority Queue
+  |                 |                    |
+  | Check If Empty   |                    |
+  |---------------->|                    |
+  |                 | Is Queue Empty?    |
+  |                 |------------------->|
+  |                 | Queue Status       |
+  |                 |<-------------------|
+  | Status Retrieved |                    |
+  |<----------------|                    |
+```
+
+---
+
+### `Sleep`
+
+```plaintext
+Scheduler      Task
+    |            |
+    | Sleep Task |
+    |----------->|
+    | Wait for Execution Time|
+    |<-----------|
+```
+
+############################PQ API############################
+
+---
+
+### `PQCreate`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Create PQ       |                     |
+  |---------------->|                     |
+  |                 | Create Sorted List |
+  |                 |------------------->|
+  |                 | Sorted List Created|
+  |                 |<-------------------|
+  | Priority Queue Created|               |
+  |<----------------|                     |
+```
+
+---
+
+### `PQDestroy`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Destroy PQ       |                     |
+  |---------------->|                     |
+  |                 | Destroy Sorted List |
+  |                 |------------------->|
+  |                 | Sorted List Destroyed|
+  |                 |<-------------------|
+  | Priority Queue Destroyed|            |
+  |<----------------|                     |
+```
+
+---
+
+### `PQSize`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Get PQ Size      |                     |
+  |---------------->|                     |
+  |                 | Get Sorted List Size|
+  |                 |------------------->|
+  |                 | Size Returned       |
+  |                 |<-------------------|
+  | Size Retrieved   |                     |
+  |<----------------|                     |
+```
+
+---
+
+### `PQIsEmpty`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Check PQ Is Empty|                     |
+  |---------------->|                     |
+  |                 | Check List Is Empty |
+  |                 |------------------->|
+  |                 | Status Returned     |
+  |                 |<-------------------|
+  | Empty Status Retrieved|               |
+  |<----------------|                     |
+```
+
+---
+
+### `PQPeek`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Peek at Front    |                     |
+  |---------------->|                     |
+  |                 | Get First Item      |
+  |                 |------------------->|
+  |                 | Item Retrieved      |
+  |                 |<-------------------|
+  | Front Item       |                     |
+  |<----------------|                     |
+```
+
+---
+
+### `PQEnqueue`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Enqueue Item     |                     |
+  |---------------->|                     |
+  |                 | Insert Item         |
+  |                 |------------------->|
+  |                 | Item Inserted       |
+  |                 |<-------------------|
+  | Item Enqueued    |                     |
+  |<----------------|                     |
+```
+
+---
+
+### `PQDequeue`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Dequeue Item     |                     |
+  |---------------->|                     |
+  |                 | Get First Item      |
+  |                 |------------------->|
+  |                 | Item Retrieved      |
+  |                 |<-------------------|
+  |                 | Remove First Item   |
+  |                 |------------------->|
+  |                 | Item Removed        |
+  |                 |<-------------------|
+  | Item Dequeued    |                     |
+  |<----------------|                     |
+```
+
+---
+
+### `PQClear`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Clear PQ         |                     |
+  |---------------->|                     |
+  |                 | While List Not Empty|
+  |                 |------------------->|
+  |                 | Dequeue Item        |
+  |                 |------------------->|
+  |                 | Item Removed        |
+  |                 |<-------------------|
+  |                 |                     |
+  | Priority Queue Cleared|               |
+  |<----------------|                     |
+```
+
+---
+
+### `PQErase`
+
+```plaintext
+User          PriorityQueue          SortedList
+  |                 |                     |
+  | Erase Item       |                     |
+  |---------------->|                     |
+  |                 | Find Matching Item  |
+  |                 |------------------->|
+  |                 | Match Found         |
+  |                 |<-------------------|
+  |                 | Remove Item         |
+  |                 |------------------->|
+  |                 | Item Removed        |
+  |                 |<-------------------|
+  | Item Erased      |                     |
+  |<----------------|                     |
+```
+
+---############################TASK API############################
+
+---
+
+### `TaskCreate`
+
+```plaintext
+User          TaskManager        UIDManager          TimeLibrary
+  |                 |                   |                  |
+  | Create Task      |                   |                  |
+  |---------------->|                   |                  |
+  |                 | Create UID         |                  |
+  |                 |------------------->|                  |
+  |                 | UID Created         |                  |
+  |                 |<-------------------|                  |
+  |                 | Compute Interval    |                  |
+  |                 |-------------------->Time()            |
+  |                 | Interval Computed   |                  |
+  |                 |<-------------------|                  |
+  | Task Created     |                   |                  |
+  |<----------------|                   |                  |
+```
+
+---
+
+### `TaskDestroy`
+
+```plaintext
+User          TaskManager        CleanupFunction
+  |                 |                   |
+  | Destroy Task     |                   |
+  |---------------->|                   |
+  |                 | Run Cleanup        |
+  |                 |------------------->|
+  |                 | Cleanup Complete   |
+  |                 |<-------------------|
+  | Task Destroyed   |                   |
+  |<----------------|                   |
+```
+
+---
+
+### `TaskExecute`
+
+```plaintext
+User          TaskManager        OperationFunction
+  |                 |                   |
+  | Execute Task     |                   |
+  |---------------->|                   |
+  |                 | Run Operation      |
+  |                 |------------------->|
+  |                 | Operation Result   |
+  |                 |<-------------------|
+  | Execution Complete|                  |
+  |<----------------|                   |
+```
+
+---
+
+### `TaskGetTimeToExecute`
+
+```plaintext
+User          TaskManager
+  |                 |
+  | Get Execution Time|
+  |---------------->|
+  | Time Returned     |
+  |<----------------|
+```
+
+---
+
+### `TaskGetUID`
+
+```plaintext
+User          TaskManager       UIDManager
+  |                 |                |
+  | Get Task UID     |                |
+  |---------------->|                |
+  | UID Retrieved    |                |
+  |<----------------|                |
+```
+
+---
+
+### `TaskUpdateTimeToExecute`
+
+```plaintext
+User          TaskManager
+  |                 |
+  | Update Execution Time|
+  |---------------->|
+  | Execution Time Updated|
+  |<----------------|
+```
+
+---
+
+### `TaskIsMatch`
+
+```plaintext
+User          TaskManager       UIDManager
+  |                 |                |
+  | Check Match      |                |
+  |---------------->|                |
+  | Compare UID       |                |
+  |----------------->|                |
+  | Match Result      |                |
+  |<-----------------|                |
+  | Result Returned   |                |
+  |<----------------|                |
+```
+
+---
+
+### `TaskCompare`
+
+```plaintext
+User          TaskManager
+  |                 |
+  | Compare Tasks    |
+  |---------------->|
+  | Comparison Result|
+  |<----------------|
+```
+
+---############################UID API############################
+
+Here’s a set of sequence diagrams for the `UID` operations based on your implementation:
+
+---
+
+### `UIDCreate`
+
+```plaintext
+User          UIDManager          TimeLibrary          OS
+  |                 |                   |                |
+  | Request UID      |                   |                |
+  |---------------->|                   |                |
+  |                 | Generate Counter   |                |
+  |                 |------------------->|                |
+  |                 |                    | Get PID        |
+  |                 |--------------------|--------------->|
+  |                 | Counter Generated  | PID Retrieved  |
+  |                 |<------------------|<---------------|
+  |                 | Generate Timestamp |                |
+  |                 |------------------->Time()           |
+  |                 | Timestamp Retrieved|                |
+  |                 |<-------------------|                |
+  | UID Generated    |                   |                |
+  |<----------------|                   |                |
+```
+
+---
+
+### `UIDIsSame`
+
+```plaintext
+User          UIDManager
+  |                 |
+  | Compare UIDs     |
+  |---------------->|
+  | Comparison Result|
+  |<----------------|
+```
+
+---
+
+### `PrintUID`
+
+```plaintext
+User          UIDManager        TimeLibrary
+  |                 |                  |
+  | Print UID        |                  |
+  |---------------->|                  |
+  | Retrieve Timestamp|                |
+  |------------------>| Time()          |
+  | Timestamp Retrieved|               |
+  |<-----------------|                |
+  | Print Complete    |                |
+  |<----------------|                |
+```
+
+---

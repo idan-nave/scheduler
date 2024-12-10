@@ -1,0 +1,23 @@
+NAME
+       X - App Description
+
+SYNOPSIS
+       logger [filename to open] [-create]
+       (on input mode):
+       1. [-remove] | [-count] | [-exit] | [< | string] [-errmap] [-help]
+       2. Append string
+
+DESCRIPTION
+        Requirements:
+        • The program needs to receive the name of a file as a 1st parameter.
+        • The file should be opened and closed for each operation.
+        • For every string entered, the program appends the string
+          to the end of the file (on a new line).
+OPTIONS
+        -remove - The file is deleted.
+        -count  - The program opens the file, count the number of lines,
+                  and print this number to the terminal.
+        -exit   - terminate program.
+        <         (at the begining of the string) - The string after '<'
+	          is pre-pended to  the file instead of the end.
+        -print  - Prints current content.

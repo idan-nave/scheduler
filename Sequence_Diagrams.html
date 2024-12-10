@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduler Workflow Diagram</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+        }
+        h1 {
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .diagram-box {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 20px;
+            padding: 15px;
+            width: 90%;
+            max-width: 900px;
+            overflow-x: auto;
+        }
+        .diagram-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #333;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1.5;
+            font-size: 16px;
+        }
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Scheduler Workflow Diagram</h1>
+</header>
+
+<div class="container">
+    <div class="diagram-box">
+        <h2>Task Creation Workflow</h2>
+        <pre>
+User          Scheduler         TaskManager        UIDManager         PQ  
+  |                |                  |                  |             |           
+  | Create Task    |                  |                  |             |              
+  |---------------->|                  |                  |             |              
+  |                | Create Task      |                  |             |              
+  |                |------------------>|                  |             |              
+  |                | Generate UID     |                  |             |           
+  |                |------------------>| Generate UID     |             |               
+  |                |                   |----------------->|             |
+  |                |                   |Get Counter,PID,TS|             |               
+  |                |                   | Return UID       |             |               
+  |                |  UID Generated    |<-----------------|             | 
+  |                |<------------------|                  |             |
+  |                | Set Task Params  |                  |             |
+  |                |----------------->|                  |             |
+  |                | Set Execution Time|                  |             |
+  |                |<------------------|                  |             |
+  |                | Add Task to PQ    |                  |             |       
+  |                |----------------->| Insert to PQ     |             |      
+  |                |                   |----------------->| Insert Task |
+  |                |  Task Inserted    |                  |             |
+  |                |<------------------|                  |             |
+  | Task Created   |                   |                  |             |
+  |<----------------|                  |                  |             |
+        </pre>
+    </div>
+</div>
+
+<div class="container">
+    <div class="diagram-box">
+        <h2>Task Execution Workflow</h2>
+        <pre>
+  | Execute Task   |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Get Next Task    |                  |             |
+  |                |----------------->|                  |             |
+  |                | Retrieve Task    |                  |             |
+  |                |----------------->| Retrieve Task    |             |
+  |                |                   |----------------->|             |
+  |                |                   | Task Retrieved   |             |
+  |                |<------------------|                  |             |
+  |                | Execute Task      |                  |             |
+  |                |----------------->| Execute OpFunc   |             |
+  |                | Run Task Operation|                  |             |
+  |                |----------------->| OpFunc()         |             |
+  |                | Operation Complete|                  |             |
+  |                |<-----------------|                  |             |
+  |                | Update Task Time  |                  |             |
+  |                |----------------->| Update Time      |             |
+  |                |                   | New Exec Time    |             |
+  |                |                   |----------------->|             |
+  |                | Reinsert Task     |                  |             |
+  |                |----------------->| Insert Task      |             |
+  |                |                   |----------------->| Insert Task |
+  |                |                   | Task Reinserted  |             |
+  |                |<------------------|                  |             |
+  | Task Executed  |                   |                  |             |
+  |<----------------|                  |                  |             |
+        </pre>
+    </div>
+</div>
+
+<div class="container">
+    <div class="diagram-box">
+        <h2>Task Removal Workflow</h2>
+        <pre>
+  | Erase Task     |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Find Task        |                  |             |
+  |                |----------------->|                  |              |
+  |                | Match Task       |                  |             |
+  |                |----------------->| Search Task      |             |
+  |                |                   |----------------->|             |
+  |                |                   | Match Found      |             |
+  |                |                   |<-----------------|             |
+  |                | Remove Task      |                  |             |
+  |                |----------------->| Remove Task      |             |
+  |                |                   |----------------->|             |
+  |                |                   | Task Removed     |             |
+  |                |<------------------|                  |             |
+  | Task Removed   |                   |                  |             |
+  |<----------------|                  |                  |             |
+        </pre>
+    </div>
+</div>
+
+<div class="container">
+    <div class="diagram-box">
+        <h2>Priority Queue Operations</h2>
+        <pre>
+  | Insert Task    |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Insert Task to PQ |                  |             |
+  |                |----------------->|                  |             |
+  |                | Task Inserted    |                  |             |
+  |                |<-----------------|                  |             |
+  | Get Task       |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Retrieve Task    |                  |             |
+  |                |----------------->|                  |             |
+  |                | Task Retrieved   |                  |             |
+  |                |<-----------------|                  |             |
+  | Task Executed  |                  |                  |             |
+  |<----------------|                 |                  |             |
+  | Check Size     |                  |                  |             |
+  |---------------->|                  |                  |             |
+  |                | Size of PQ       |                  |             |
+  |                |----------------->|                  |             |
+  |                | Return Size      |                  |             |
+  |                |<-----------------|                  |             |
+        </pre>
+    </div>
+</div>
+
+<footer>
+    <p>&copy; 2024 Scheduler Workflow - All Rights Reserved</p>
+</footer>
+
+</body>
+</html>
